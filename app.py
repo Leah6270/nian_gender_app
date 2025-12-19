@@ -14,11 +14,32 @@ import os
 app = Flask(__name__)
 
 # 3. 应用配置
-app.config['SECRET_KEY'] = 'Kathmanhuhu2018'  
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or 'sqlite:///database.db'  # 数据库文件路径
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # 禁用警告
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'Kathmanhuhu2018')
+
+# 数据库配置 - 使用 Railway PostgreSQL
+database_url = os.environ.get('DATABASE_URL')
+
+if database_url:
+    # 重要：SQLAlchemy 需要 postgresql:// 而不是 postgres://
+    if database_url.startswith('postgres://'):
+        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    print(f"使用 PostgreSQL 数据库")
+else:
+    # 本地开发时使用 SQLite
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+    print("使用本地 SQLite 数据库")
+
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # session有效期1小时
 
+# PostgreSQL 连接池配置（Vercel Serverless 环境需要）
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_recycle': 300,
+    'pool_pre_ping': True,
+    'pool_size': 5,
+    'max_overflow': 10
+}
 # 4. 初始化数据库
 db = SQLAlchemy(app)
 
