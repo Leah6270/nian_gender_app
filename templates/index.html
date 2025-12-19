@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>迷你王性别预测投票</title>
+    <!-- 引入 Pico.css 框架，用于基础样式和响应式布局 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        /* 页面整体样式：使用与register相同的JPEG图片平铺背景 */
+        body {
+            background-image: url("{{ url_for('static', filename='images/background.jpg') }}");
+            background-repeat: repeat; /* 平铺模式 */
+            background-size: 300px 300px; /* 控制平铺密度，与register保持一致 */
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            padding: 20px;
+            position: relative; /* 为半透明遮罩做准备 */
+        }
+        
+        /* 添加与register相同的半透明遮罩层，确保表单内容可读 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.85); /* 白色半透明遮罩 */
+            z-index: 0;
+        }
+        
+
+        /* 主容器 */
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+            position: relative; /* 新增：建立定位上下文 */
+            z-index: 1; /* 新增：确保容器在遮罩层之上 */
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        /* 喷泉图片的容器样式 */
+        .header-gif-container {
+            margin-bottom: 1rem;
+        }
+        .header-gif-container img {
+            max-width: 180px; /* 控制GIF显示大小 */
+            height: auto;
+            border-radius: 12px; /* 添加圆角 */
+        }
+        
+        /* 截止日期提示框样式 */
+        .deadline-notice {
+            margin: 1.5rem 0;
+            padding: 1rem;
+            border-radius: 12px;
+            background: #fff9e6;
+            border-left: 5px solid #ffcc00;
+        }
+        
+        /* 错误信息框样式 */
+        .error-message {
+            color: #841b10;
+            background: #ffeaea;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        
+        /* 密码输入框特殊样式 */
+        .pin-input {
+            text-align: center;
+            letter-spacing: 2px;
+            font-size: 1.1rem;
+        }
+        
+        /* 提交按钮样式 */
+        .submit-btn {
+            width: 100%;
+            margin-top: 1.5rem;
+            background: #fd87af;
+            border: none;
+            padding: 0.8rem;
+            font-size: 1.1rem;
+        }
+        
+        .submit-btn:hover {
+            background: #d81b60;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 1. 顶部装饰：GIF -->
+        <div class="header-gif-container">
+            <!-- 使用Flask的url_for函数获取正确的静态文件路径 -->
+            <img src="{{ url_for('static', filename='images/fountain.gif') }}" 
+                 alt="喷泉装饰动画">
+        </div>
+        
+        <!-- 2. 主标题 -->
+        <h1 style="color: #e91e63; font-size: 1.8rem; line-height: 1.2; white-space: nowrap; text-align: center;">迷你王性别预测投票</h1>
+        
+        <!-- 3. 副标题说明 -->
+        <p>请输入邀请码进入投票页面</p>
+        
+        <!-- 4. 截止日期提示区域 -->
+        {% if deadline_passed %}
+        <div class="deadline-notice" style="background: #ffe6e6; border-left-color: #ff4444;">
+            <p style="margin:0;">投票已于 {{ deadline_str }} 截止</p>
+        </div>
+        {% else %}
+        <div class="deadline-notice">
+            <p style="margin:0;">投票截止：{{ deadline_str }}</p>
+        </div>
+        {% endif %}
+        
+        <!-- 5. 错误信息显示区域 -->
+        {% if error %}
+        <div class="error-message">{{ error }}</div>
+        {% endif %}
+        
+        <!-- 6. 密码输入表单 -->
+        <form action="{{ url_for('verify_pin') }}" method="POST">
+            <label for="pin">
+                请输入邀请码进入投票页面
+                <input type="password" 
+                       id="pin" 
+                       name="pin" 
+                       placeholder="请输入6位密码" 
+                       required 
+                       class="pin-input">
+            </label>
+            
+            <!-- 7. 提交按钮 -->
+            <button type="submit" class="contrast submit-btn">
+                进入投票
+            </button>
+        </form>
+        
+        <!-- 8. 装饰性分隔线 -->
+        <hr style="margin: 2rem 0;">
+        
+        <!-- 9. 底部提示文字 -->
+        <p style="font-size:0.9em; color:#888;">
+            小王和小李收到你的祝福，请期待答案揭晓！
+        </p>
+    </div>
+</body>
+</html>
