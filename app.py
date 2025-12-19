@@ -369,3 +369,11 @@ if __name__ == '__main__':
     # debug=True 表示调试模式，代码修改会自动重启
     # host='0.0.0.0' 可以让同一网络下的手机访问
     app.run(debug=True, host='0.0.0.0', port=5000)
+else:
+    # vercel部署数据库初始化
+    application = app
+    try:
+        with app.app_context():
+            init_database()
+    except Exception as e:
+        print(f"数据库初始化警告: {e}")
