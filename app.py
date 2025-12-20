@@ -414,10 +414,35 @@ def set_answer():
 # 9. 应用启动
 # ------------------------------------------------------------------
 
+# 数据库初始化函数
+def initialize_database():
+    """初始化数据库（适合 Serverless 环境调用）"""
+    try:
+        with app.app_context():
+            db.create_all()
+            
+            # 如果还没有投票活动，创建一个默认的
+            if not VoteEvent.query.first():
+                from datetime import datetime
+                deadline = datetime(2026, 2, 16, 23, 59, 59)
+                default_event = VoteEvent(
+                    event_password='LMN2026',
+                    end_date=deadline
+                )
+                db.session.add(default_event)
+                db.session.commit()
+                print("✅ 数据库初始化成功！")
+    except Exception as e:
+        print(f"⚠️ 数据库初始化警告: {e}")
+
+# 在应用启动时尝试初始化数据库（适用于 Serverless 冷启动）
+try:
+    initialize_database()
+except Exception as e:
+    print(f"初始化数据库失败（可能为正常情况）: {e}")
+
+# 本地开发时运行的代码
 if __name__ == '__main__':
-    # 初始化数据库（如果尚未初始化）
-    init_database()
-    
     print("\n" + "="*50)
     print("投票应用启动成功！")
     print("访问地址：http://127.0.0.1:5000")
@@ -425,15 +450,6 @@ if __name__ == '__main__':
     print("管理后台：http://127.0.0.1:5000/admin (密码: admin123)")
     print("="*50 + "\n")
     
-    # 启动Flask开发服务器
-    # debug=True 表示调试模式，代码修改会自动重启
-    # host='0.0.0.0' 可以让同一网络下的手机访问
+    # 本地开发使用 Flask 服务器
     app.run(debug=True, host='0.0.0.0', port=5000)
-else:
-    # vercel部署数据库初始化
-    application = app
-    try:
-        with app.app_context():
-            init_database()
-    except Exception as e:
-        print(f"数据库初始化警告: {e}")
+
