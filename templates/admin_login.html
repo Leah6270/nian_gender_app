@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理员登录</title>
+    <!-- 引入 Pico.css 框架 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        /* ========== CSS变量定义（新主题色系）========== */
+        :root {
+            /* 核心三色 */
+            --color-citron: #D1D067;      /* 莫兰迪黄 - 主容器背景 */
+            --color-periwinkle: #B9C7F8;  /* 淡蓝 - 页面背景 */
+            --color-zaffre: #0D21A5;      /* 深蓝 - 主强调色 */
+            
+            /* 扩展功能色 */
+            --color-text: #2C3A4D;        /* 深灰 - 主要文字 */
+            --color-background: #F8F9FA;  /* 浅灰白 - 浅色背景 */
+            --color-amber: #FFB74D;       /* 琥珀 - 辅助强调色 */
+            --color-sage: #81C784;        /* 鼠尾草绿 - 成功状态 */
+            --color-alizarin: #E74C3C;    /* 茜红 - 错误警示 */
+            
+            /* 衍生实用色 */
+            --color-zaffre-light: rgba(13, 33, 165, 0.1);
+            --color-zaffre-dark: #0A1A8C;
+            --color-citron-light: rgba(209, 208, 103, 0.9);
+        }
+
+        /* ========== 页面整体样式：使用与其他页面相同的JPEG图片平铺背景 ========== */
+        body {
+            background-image: url("{{ url_for('static', filename='images/background.jpg') }}");
+            background-repeat: repeat;
+            background-size: 300px 300px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            padding: 20px;
+            position: relative; /* 为半透明遮罩做准备 */
+        }
+        
+        /* 添加半透明遮罩层，确保表单内容可读 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.88); /* 白色半透明遮罩 */
+            z-index: 0;
+        }
+        
+        /* ========== 登录框容器 ========== */
+        .login-container {
+            max-width: 400px;
+            margin: 0 auto;
+            width: 100%;
+            position: relative; /* 确保内容在遮罩之上 */
+            z-index: 1;
+        }
+        
+        /* ========== 登录卡片 ========== */
+        .login-card {
+            background: var(--color-citron);
+            padding: 2.5rem;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        /* ========== 管理员图标区域 ========== */
+        .admin-icon {
+            font-size: 3.5rem;
+            margin-bottom: 1.5rem;
+            color: var(--color-zaffre);
+        }
+        
+        /* ========== 标题样式 ========== */
+        .login-title {
+            color: var(--color-zaffre);
+            margin-bottom: 0.5rem;
+        }
+        
+        /* ========== 副标题样式 ========== */
+        .login-subtitle {
+            color: var(--color-text);
+            margin-bottom: 2rem;
+            font-size: 1rem;
+            opacity: 0.8;
+        }
+        
+        /* ========== 密码输入框容器 ========== */
+        .password-container {
+            position: relative;
+            margin-bottom: 1.5rem;
+        }
+        
+        /* ========== 密码输入框样式 ========== */
+        .password-input {
+            width: 100%;
+            padding: 0.9rem 1rem;
+            border: 2px solid rgba(0,0,0,0.1);
+            border-radius: 10px;
+            font-size: 1rem;
+            letter-spacing: 2px;
+            transition: all 0.3s;
+            padding-right: 50px; /* 为眼睛图标留空间 */
+            background: rgba(255, 255, 255, 0.9);
+            color: var(--color-text);
+        }
+        
+        .password-input:focus {
+            border-color: var(--color-zaffre);
+            outline: none;
+            box-shadow: 0 0 0 3px var(--color-zaffre-light);
+            background: white;
+        }
+        
+        /* ========== 显示/隐藏密码按钮 ========== */
+        .toggle-password {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--color-text);
+            font-size: 1.2rem;
+            padding: 5px;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+        
+        .toggle-password:hover {
+            opacity: 1;
+        }
+        
+        /* ========== 登录按钮样式 ========== */
+        .login-btn {
+            width: 100%;
+            padding: 0.9rem;
+            background: var(--color-zaffre);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 0.5rem;
+            font-weight: 600;
+            box-shadow: 0 4px 8px rgba(13, 33, 165, 0.3);
+        }
+        
+        .login-btn:hover {
+            background: var(--color-zaffre-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(13, 33, 165, 0.4);
+        }
+        
+        .login-btn:disabled {
+            background: #aaa;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        /* ========== 返回链接 ========== */
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 1.5rem;
+            color: var(--color-zaffre);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+            color: var(--color-zaffre-dark);
+        }
+        
+        /* ========== 安全提示 ========== */
+        .security-note {
+            margin-top: 1.5rem;
+            padding: 0.8rem;
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: var(--color-text);
+            border-left: 3px solid var(--color-zaffre);
+            opacity: 0.8;
+        }
+        
+        /* ========== 错误信息样式 ========== */
+        .error-message {
+            color: var(--color-alizarin);
+            background: rgba(231, 76, 60, 0.1);
+            padding: 0.8rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid var(--color-alizarin);
+            display: none; /* 默认隐藏，有错误时通过JS显示 */
+        }
+        
+        /* ========== 响应式调整 ========== */
+        @media (max-width: 480px) {
+            body {
+                padding: 20px 15px;
+            }
+            
+            .login-card {
+                padding: 2rem 1.5rem;
+            }
+            
+            .admin-icon {
+                font-size: 3rem;
+            }
+            
+            .login-title {
+                font-size: 1.5rem;
+            }
+            
+            .login-subtitle {
+                font-size: 0.9rem;
+            }
+        }
+        
+        @media (max-width: 375px) {
+            .login-card {
+                padding: 1.5rem 1rem;
+            }
+            
+            .admin-icon {
+                font-size: 2.5rem;
+            }
+            
+            .password-input {
+                padding: 0.8rem 0.9rem;
+                font-size: 0.95rem;
+            }
+            
+            .login-btn {
+                padding: 0.8rem;
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <!-- 1. 管理员图标 -->
+            <div class="admin-icon">🔐👑</div>
+            
+            <!-- 2. 页面标题 -->
+            <h2 class="login-title">管理员登录</h2>
+            <p class="login-subtitle">请输入管理员密码访问后台</p>
+            
+            <!-- 3. 错误信息区域（默认隐藏） -->
+            <div class="error-message" id="errorMessage"></div>
+            
+            <!-- 4. 登录表单 -->
+            <!-- 表单会提交到 /admin 路由（对应app.py中的admin函数） -->
+            <form action="{{ url_for('admin') }}" method="POST" id="loginForm">
+                <!-- 密码输入框 -->
+                <div class="password-container">
+                    <input type="password" 
+                           id="password" 
+                           name="password" 
+                           class="password-input" 
+                           placeholder="请输入管理员密码"
+                           required
+                           autocomplete="current-password">
+                    <button type="button" class="toggle-password" id="togglePassword">
+                        👁️
+                    </button>
+                </div>
+                
+                <!-- 登录按钮 -->
+                <button type="submit" class="login-btn" id="loginBtn">
+                    登录管理后台
+                </button>
+            </form>
+            
+            <!-- 5. 安全提示 -->
+            <div class="security-note">
+                <strong>安全提示：</strong>使用后请及时退出。
+            </div>
+            
+            <!-- 6. 返回首页链接 -->
+            <a href="{{ url_for('index') }}" class="back-link">
+                ← 返回投票首页
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // 显示/隐藏密码功能
+        const togglePassword = document.getElementById('togglePassword');
+        const passwordInput = document.getElementById('password');
+        const loginForm = document.getElementById('loginForm');
+        const loginBtn = document.getElementById('loginBtn');
+        const errorMessage = document.getElementById('errorMessage');
+        
+        // 切换密码显示/隐藏
+        togglePassword.addEventListener('click', function() {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            this.textContent = type === 'password' ? '👁️' : '🙈';
+        });
+        
+        // 防止表单重复提交
+        loginForm.addEventListener('submit', function(e) {
+            loginBtn.disabled = true;
+            loginBtn.innerHTML = '⏳ 验证中...';
+        });
+        
+        // 检查URL中是否有错误参数（例如密码错误后重定向回来）
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const error = urlParams.get('error');
+            
+            if (error) {
+                errorMessage.textContent = decodeURIComponent(error);
+                errorMessage.style.display = 'block';
+                
+                // 3秒后自动隐藏错误信息
+                setTimeout(() => {
+                    errorMessage.style.display = 'none';
+                }, 5000);
+            }
+            
+            // 自动聚焦到密码输入框
+            passwordInput.focus();
+        };
+        
+        // 输入时隐藏错误信息
+        passwordInput.addEventListener('input', function() {
+            if (errorMessage.style.display === 'block') {
+                errorMessage.style.display = 'none';
+            }
+        });
+        
+        // 添加键盘快捷键支持（可选）
+        document.addEventListener('keydown', function(e) {
+            // Ctrl+Enter 提交表单
+            if (e.ctrlKey && e.key === 'Enter') {
+                loginForm.submit();
+            }
+            
+            // ESC 清空输入
+            if (e.key === 'Escape') {
+                passwordInput.value = '';
+                passwordInput.focus();
+            }
+        });
+    </script>
+</body>
+</html>

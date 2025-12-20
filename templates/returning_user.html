@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>老用户通道 - 迷你王性别预测投票</title>
+    <!-- 引入 Pico.css 框架 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        /* ========== CSS变量定义（新主题色系）========== */
+        :root {
+            /* 核心三色 */
+            --color-citron: #D1D067;      /* 莫兰迪黄 - 主容器背景 */
+            --color-periwinkle: #B9C7F8;  /* 淡蓝 - 页面背景 */
+            --color-zaffre: #0D21A5;      /* 深蓝 - 主强调色 */
+            
+            /* 扩展功能色 */
+            --color-text: #2C3A4D;        /* 深灰 - 主要文字 */
+            --color-background: #F8F9FA;  /* 浅灰白 - 浅色背景 */
+            --color-amber: #FFB74D;       /* 琥珀 - 辅助强调色 */
+            --color-sage: #81C784;        /* 鼠尾草绿 - 成功状态 */
+            --color-alizarin: #E74C3C;    /* 茜红 - 错误警示 */
+            
+            /* 衍生实用色 */
+            --color-zaffre-light: rgba(13, 33, 165, 0.1);
+            --color-zaffre-dark: #0A1A8C;
+            --color-citron-light: rgba(209, 208, 103, 0.9);
+        }
+
+        /* ========== 页面整体样式 ========== */
+        body {
+            background-image: url("{{ url_for('static', filename='images/background.jpg') }}");
+            background-repeat: repeat;
+            background-size: 300px 300px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            padding: 20px;
+            position: relative;
+            background-color: var(--color-periwinkle); /* 添加背景色作为后备 */
+        }
+        
+        /* 半透明遮罩层 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.88); /* 稍微增加不透明度以提高可读性 */
+            z-index: 0;
+        }
+        
+        /* ========== 主容器 ========== */
+        .container {
+            max-width: 450px;
+            margin: 0 auto;
+            background: var(--color-citron);
+            border-radius: 20px;
+            padding: 2.5rem;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
+            position: relative;
+            z-index: 1;
+            border: 1px solid rgba(230, 230, 230, 0.5);
+        }
+        
+        /* ========== 返回按钮样式 ========== */
+        .back-btn {
+            position: absolute;
+            top: 1.5rem;
+            left: 1.5rem;
+            color: var(--color-text);
+            text-decoration: none;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            opacity: 0.8;
+            transition: all 0.3s ease;
+        }
+        
+        .back-btn:hover {
+            color: var(--color-zaffre);
+            opacity: 1;
+        }
+        
+        /* ========== 主标题样式 ========== */
+        .main-title {
+            color: var(--color-zaffre);
+            text-align: center;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        
+        /* ========== 副标题/说明文字 ========== */
+        .subtitle {
+            color: var(--color-zaffre);
+            text-align: center;
+            font-size: 1rem;
+            margin-bottom: 0.8rem;
+            opacity: 0.8;
+            font-weight: 500;
+        }
+        
+        /* ========== 说明文字 ========== */
+        .description {
+            color: var(--color-text);
+            text-align: center;
+            margin-bottom: 2rem;
+            line-height: 1.5;
+            padding: 0 0.5rem;
+        }
+        
+        /* ========== 表单输入组样式 ========== */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group label {
+            font-weight: 600;
+            color: var(--color-text);
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.3s;
+            background-color: rgba(255, 255, 255, 0.9);
+            color: var(--color-text);
+        }
+        
+        .form-group input:focus {
+            border-color: var(--color-zaffre);
+            outline: none;
+            box-shadow: 0 0 0 3px var(--color-zaffre-light);
+            background-color: white;
+        }
+        
+        /* ========== 提示小字 ========== */
+        .form-hint {
+            display: block;
+            margin-top: 0.3rem;
+            color: var(--color-text);
+            font-size: 0.85rem;
+            opacity: 0.7;
+        }
+        
+        /* ========== 提交按钮 ========== */
+        .submit-btn {
+            width: 100%;
+            margin-top: 1rem;
+            background: var(--color-zaffre);
+            border: none;
+            padding: 1rem;
+            font-size: 1.1rem;
+            border-radius: 10px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+            box-shadow: 0 4px 8px rgba(13, 33, 165, 0.3);
+        }
+        
+        .submit-btn:hover {
+            background: var(--color-zaffre-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(13, 33, 165, 0.4);
+        }
+        
+        /* ========== 底部链接 ========== */
+        .footer-link {
+            text-align: center;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+            font-size: 0.9rem;
+            color: var(--color-text);
+        }
+        
+        .footer-link a {
+            color: var(--color-zaffre);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .footer-link a:hover {
+            color: var(--color-zaffre-dark);
+            text-decoration: underline;
+        }
+        
+        /* ========== 徽章/装饰元素 ========== */
+        .badge {
+            display: inline-block;
+            background-color: var(--color-zaffre-light);
+            color: var(--color-zaffre);
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            margin-left: 5px;
+            font-weight: 500;
+        }
+        
+        /* ========== 表单容器装饰 ========== */
+        .form-container {
+            position: relative;
+            padding-top: 1.5rem;
+        }
+        
+        .form-container::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, var(--color-zaffre), transparent);
+            border-radius: 2px;
+        }
+        
+        /* ========== 响应式调整 ========== */
+        @media (max-width: 480px) {
+            .container {
+                padding: 2rem 1.5rem;
+                margin: 0 10px;
+            }
+            body {
+                padding: 10px;
+            }
+            .main-title {
+                font-size: 1.5rem;
+            }
+            .subtitle {
+                font-size: 0.9rem;
+            }
+            .description {
+                padding: 0;
+                font-size: 0.9rem;
+            }
+        }
+        
+        @media (max-width: 375px) {
+            .container {
+                padding: 1.5rem 1.2rem;
+            }
+            .main-title {
+                font-size: 1.4rem;
+            }
+            .form-group input {
+                padding: 10px 14px;
+            }
+            .submit-btn {
+                padding: 0.9rem;
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 返回首页按钮 -->
+        <a href="{{ url_for('index') }}" class="back-btn">
+            ← 返回首页
+        </a>
+        
+        <!-- 页面标题 -->
+        <h1 class="main-title">已投票用户通道</h1>
+        <p class="subtitle">身份验证入口</p>
+        <p class="description">
+            请输入您首次投票时使用的<strong>昵称</strong>和<strong>联系方式</strong><br>
+            验证身份后，系统将带您直接查看投票结果或继续投票。
+        </p>
+        
+        <!-- 老用户验证表单 -->
+        <div class="form-container">
+            <form action="{{ url_for('verify_pin') }}" method="POST">
+                <!-- 隐藏字段：默认的PIN码 -->
+                <input type="hidden" name="pin" value="LMN2026">
+                
+                <!-- 昵称输入 -->
+                <div class="form-group">
+                    <label for="nickname">
+                        您的昵称
+                        <span class="badge">必填</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="nickname" 
+                        name="nickname" 
+                        placeholder="请输入您注册时使用的昵称" 
+                        required
+                        autofocus>
+                    <small class="form-hint">请确保与首次投票时填写的昵称完全一致。</small>
+                </div>
+                
+                <!-- 联系方式输入 -->
+                <div class="form-group">
+                    <label for="contact">
+                        联系方式
+                        <span class="badge">必填</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="contact" 
+                        name="contact" 
+                        placeholder="请输入您注册时使用的手机号或微信号" 
+                        required>
+                    <small class="form-hint">用于验证身份，确保是您本人操作。</small>
+                </div>
+                
+                <!-- 提交按钮 -->
+                <button type="submit" class="submit-btn">
+                    验证身份并进入
+                </button>
+            </form>
+        </div>
+        
+        <!-- 底部提示和链接 -->
+        <div class="footer-link">
+            <p>如果您是首次参与，请 <a href="{{ url_for('index') }}">返回首页</a> 从头开始。</p>
+            <p style="margin-top:0.5rem; font-size:0.85em; opacity:0.7;">
+                忘记信息？很遗憾，暂时无法通过其他方式找回。<br>
+                您可以尝试用新的昵称和联系方式重新参与。
+            </p>
+        </div>
+    </div>
+</body>
+</html>

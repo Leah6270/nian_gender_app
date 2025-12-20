@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>投票结果</title>
+    <!-- 引入 Pico.css 框架 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <!-- 引入 Chart.js 用于绘制条形图 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* ========== CSS变量定义（新主题色系）========== */
+        :root {
+            /* 核心三色 */
+            --color-citron: #D1D067;      /* 莫兰迪黄 - 主容器背景 */
+            --color-periwinkle: #B9C7F8;  /* 淡蓝 - 页面背景 */
+            --color-zaffre: #0D21A5;      /* 深蓝 - 主强调色 */
+            
+            /* 扩展功能色 */
+            --color-text: #2C3A4D;        /* 深灰 - 主要文字 */
+            --color-background: #F8F9FA;  /* 浅灰白 - 浅色背景 */
+            --color-amber: #FFB74D;       /* 琥珀 - 辅助强调色 */
+            --color-sage: #81C784;        /* 鼠尾草绿 - 成功状态 */
+            --color-alizarin: #E74C3C;    /* 茜红 - 错误警示 */
+            
+            /* 衍生实用色 */
+            --color-zaffre-light: rgba(13, 33, 165, 0.1);
+            --color-zaffre-dark: #0A1A8C;
+            --color-citron-light: rgba(209, 208, 103, 0.9);
+            
+            /* 保留图标原始颜色（不变） */
+            --color-boy: #2196f3;         /* 男孩蓝色 - 保持原有 */
+            --color-girl: #e91e63;        /* 女孩粉色 - 保持原有 */
+        }
+
+        /* ========== 页面整体样式：使用JPEG图片平铺背景 ========== */
+        body {
+            padding: 20px;
+            background-image: url("{{ url_for('static', filename='images/background.jpg') }}");
+            background-repeat: repeat;
+            background-size: 300px 300px;
+            min-height: 100%;
+            position: relative;
+            overflow-x: hidden;
+        }
+        
+        /* 添加半透明遮罩层，确保内容可读 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.88);
+            z-index: 0;
+        }
+        
+        /* ========== 主容器 ========== */
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            width: 100%;
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* ========== 页面头部 ========== */
+        .result-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .result-header h1 {
+            color: var(--color-zaffre);
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 0.5rem;
+        }
+        
+        /* ========== 用户选择显示区域 ========== */
+        .user-choice-box {
+            background: linear-gradient(135deg, rgba(209, 208, 103, 0.3) 0%, rgba(209, 208, 103, 0.6) 100%);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            text-align: center;
+            border-left: 5px solid var(--color-zaffre);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        
+        .user-choice-box h3 {
+            color: var(--color-zaffre);
+            margin-bottom: 0.5rem;
+        }
+        
+        /* ========== 统计卡片 ========== */
+        .stats-card {
+            background: var(--color-citron);
+            border-radius: 20px;
+            padding: 2rem;
+            margin: 2rem 0;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .stats-card h3 {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            color: var(--color-zaffre);
+        }
+        
+        /* ========== 图表容器 ========== */
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin: 2rem 0;
+            background: white;
+            border-radius: 15px;
+            padding: 1rem;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+        }
+        
+        /* ========== 数字统计区域 ========== */
+        .numbers-container {
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+            margin-top: 2rem;
+        }
+        
+        .stat-item {
+            padding: 1.5rem 1rem;
+            border-radius: 15px;
+            min-width: 140px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            background: white;
+        }
+        
+        .boy-stat {
+            border: 2px solid var(--color-boy);
+        }
+        
+        .girl-stat {
+            border: 2px solid var(--color-girl);
+        }
+        
+        /* ========== 统计数字 ========== */
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin: 0.5rem 0;
+        }
+        
+        .boy-stat .stat-number {
+            color: var(--color-boy);
+        }
+        
+        .girl-stat .stat-number {
+            color: var(--color-girl);
+        }
+        
+        /* ========== 操作按钮区域 ========== */
+        .action-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 2rem;
+        }
+        
+        /* ========== 按钮样式 ========== */
+        .action-btn {
+            padding: 0.8rem 2rem;
+            border-radius: 10px;
+            border: none;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            font-weight: 600;
+        }
+        
+        .prize-btn {
+            background: var(--color-amber);
+            color: var(--color-text);
+        }
+        
+        .prize-btn:hover {
+            background: #e6a63c;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(255, 183, 77, 0.4);
+        }
+        
+        .home-btn {
+            background: var(--color-zaffre);
+            color: white;
+        }
+        
+        .home-btn:hover {
+            background: var(--color-zaffre-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(13, 33, 165, 0.4);
+        }
+        
+        /* ========== 总票数显示 ========== */
+        .total-votes {
+            text-align: center;
+            font-size: 1.1rem;
+            color: var(--color-text);
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
+        
+        .total-votes strong {
+            color: var(--color-zaffre);
+        }
+        
+        /* ========== 性别图标容器 ========== */
+        .gender-icon {
+            width: 50px;
+            height: 50px;
+            margin: 0 auto 10px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        
+        .boy-icon {
+            background-color: rgba(33, 150, 243, 0.1);
+            color: var(--color-boy);
+        }
+        
+        .girl-icon {
+            background-color: rgba(233, 30, 99, 0.1);
+            color: var(--color-girl);
+        }
+        
+        /* ========== 响应式调整 ========== */
+        @media (max-width: 600px) {
+            .chart-container {
+                height: 250px;
+                padding: 0.5rem;
+            }
+            
+            .numbers-container {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .stat-item {
+                min-width: auto;
+                width: 80%;
+                margin: 0 auto;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .action-btn {
+                width: 100%;
+            }
+            
+            body {
+                padding: 10px;
+            }
+            
+            .stats-card {
+                padding: 1.5rem;
+            }
+            
+            .user-choice-box {
+                padding: 1rem;
+            }
+        }
+        
+        @media (max-width: 400px) {
+            .chart-container {
+                height: 200px;
+            }
+            
+            .stat-number {
+                font-size: 2rem;
+            }
+            
+            .stats-card {
+                padding: 1rem;
+            }
+            
+            .action-btn {
+                padding: 0.7rem 1.5rem;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container" data-stats='{{ stats|tojson|safe }}' data-user-choice='{{ user_choice|tojson|safe }}' data-total-votes='{{ total_votes|tojson|safe }}'>
+        <!-- 页面头部 -->
+        <div class="result-header">
+            <h1>实时投票结果</h1>
+            <p class="total-votes">当前共有 <strong>{{ total_votes }}</strong> 人参与投票</p>
+        </div>
+        
+        <!-- 用户自己的选择 -->
+        {% if user_choice %}
+        <div class="user-choice-box">
+            <h3>你的选择</h3>
+            <div style="font-size: 2rem; margin: 1rem 0;">
+                {% if user_choice == '男孩' %}
+                    <span style="color: var(--color-boy); font-weight: bold;">男孩</span>
+                {% else %}
+                    <span style="color: var(--color-girl); font-weight: bold;">女孩</span>
+                {% endif %}
+            </div>
+            <p style="color: var(--color-zaffre); margin: 0; font-weight: 500;">你已成功投票，感谢参与！</p>
+        </div>
+        {% endif %}
+        
+        <!-- 统计图表区域 -->
+        <div class="stats-card">
+            <h3>投票统计</h3>
+            
+            <!-- 图表画布 -->
+            <div class="chart-container">
+                <canvas id="voteChart"></canvas>
+            </div>
+            
+            <!-- 具体数字统计 -->
+            <div class="numbers-container">
+                <div class="stat-item boy-stat">
+                    <div class="gender-icon boy-icon">男孩</div>
+                    <div class="stat-number">{{ stats['男孩'] }}</div>
+                    <p style="font-weight: 500;">男孩</p>
+                    <p style="font-size: 0.9rem; color: var(--color-text); margin-top: 0.3rem;">
+                        占比：{% if total_votes > 0 %}{{ (stats['男孩'] / total_votes * 100)|round(1) }}%{% else %}0%{% endif %}
+                    </p>
+                </div>
+                
+                <div class="stat-item girl-stat">
+                    <div class="gender-icon girl-icon">女孩</div>
+                    <div class="stat-number">{{ stats['女孩'] }}</div>
+                    <p style="font-weight: 500;">女孩</p>
+                    <p style="font-size: 0.9rem; color: var(--color-text); margin-top: 0.3rem;">
+                        占比：{% if total_votes > 0 %}{{ (stats['女孩'] / total_votes * 100)|round(1) }}%{% else %}0%{% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 操作按钮 -->
+        <div class="action-buttons">
+            <a href="{{ url_for('check_status') }}" class="action-btn prize-btn">
+                查看中奖状态
+            </a>
+            <a href="{{ url_for('index') }}" class="action-btn home-btn">
+                返回首页
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // 从后端传递的数据中获取统计信息
+        const container = document.querySelector('.container');
+        const statsData = JSON.parse(container.getAttribute('data-stats'));
+        const userChoice = JSON.parse(container.getAttribute('data-user-choice'));
+        const totalVotes = JSON.parse(container.getAttribute('data-total-votes'));
+        
+        // 准备图表数据
+        const chartData = {
+            labels: ['男孩', '女孩'],
+            datasets: [{
+                label: '票数',
+                data: [statsData['男孩'], statsData['女孩']],
+                backgroundColor: [
+                    'rgba(33, 150, 243, 0.7)',
+                    'rgba(233, 30, 99, 0.7)'
+                ],
+                borderColor: [
+                    'rgb(33, 150, 243)',
+                    'rgb(233, 30, 99)'
+                ],
+                borderWidth: 2,
+                borderRadius: 8,
+                hoverBackgroundColor: [
+                    'rgba(33, 150, 243, 0.9)',
+                    'rgba(233, 30, 99, 0.9)'
+                ]
+            }]
+        };
+        
+        // 图表配置选项
+        const chartOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const percentage = totalVotes > 0 ? 
+                                ((context.raw / totalVotes) * 100).toFixed(1) : 0;
+                            return `${context.label}: ${context.raw} 票 (${percentage}%)`;
+                        }
+                    },
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                    titleColor: 'var(--color-text)',
+                    bodyColor: 'var(--color-text)',
+                    borderColor: '#ddd',
+                    borderWidth: 1
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    },
+                    ticks: {
+                        stepSize: 1,
+                        callback: function(value) {
+                            return value + ' 票';
+                        },
+                        color: 'var(--color-text)'
+                    },
+                    title: {
+                        display: true,
+                        text: '票数',
+                        color: 'var(--color-text)',
+                        font: {
+                            size: 14,
+                            weight: 'bold'
+                        }
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        color: 'var(--color-text)',
+                        font: {
+                            size: 14,
+                            weight: 'bold'
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: '选项',
+                        color: 'var(--color-text)',
+                        font: {
+                            size: 14,
+                            weight: 'bold'
+                        }
+                    }
+                }
+            },
+            animation: {
+                duration: 1000,
+                easing: 'easeOutQuart'
+            }
+        };
+        
+        // 创建条形图
+        const ctx = document.getElementById('voteChart').getContext('2d');
+        const voteChart = new Chart(ctx, {
+            type: 'bar',
+            data: chartData,
+            options: chartOptions
+        });
+        
+        // 如果用户有选择，高亮对应的柱子
+        if (userChoice && userChoice !== 'None') {
+            const dataset = voteChart.data.datasets[0];
+            const index = userChoice === '男孩' ? 0 : 1;
+            
+            // 添加一个简单的动画效果
+            setTimeout(() => {
+                const originalColor = dataset.backgroundColor[index];
+                dataset.backgroundColor[index] = userChoice === '男孩' 
+                    ? 'rgba(33, 150, 243, 1)' 
+                    : 'rgba(233, 30, 99, 1)';
+                voteChart.update();
+                
+                // 3秒后恢复原色
+                setTimeout(() => {
+                    dataset.backgroundColor[index] = originalColor;
+                    voteChart.update();
+                }, 3000);
+            }, 1000);
+        }
+    </script>
+</body>
+</html>

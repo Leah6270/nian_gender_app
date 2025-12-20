@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>投票选择</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        /* ========== CSS变量定义（新主题色系）========== */
+        :root {
+            /* 核心三色 */
+            --color-citron: #D1D067;      /* 莫兰迪黄 - 主容器背景 */
+            --color-periwinkle: #B9C7F8;  /* 淡蓝 - 页面背景 */
+            --color-zaffre: #0D21A5;      /* 深蓝 - 主强调色 */
+            
+            /* 扩展功能色 */
+            --color-text: #2C3A4D;        /* 深灰 - 主要文字 */
+            --color-background: #F8F9FA;  /* 浅灰白 - 浅色背景 */
+            --color-amber: #FFB74D;       /* 琥珀 - 辅助强调色 */
+            --color-sage: #81C784;        /* 鼠尾草绿 - 成功状态 */
+            --color-alizarin: #E74C3C;    /* 茜红 - 错误警示（保留） */
+            
+            /* 衍生实用色 */
+            --color-zaffre-light: rgba(13, 33, 165, 0.1);
+            --color-zaffre-dark: #0A1A8C;
+            --color-citron-light: rgba(209, 208, 103, 0.9);
+            
+            /* 保留图标原始颜色（不变） */
+            --color-boy: #2196f3;         /* 男孩蓝色 - 保持原有 */
+            --color-girl: #e91e63;        /* 女孩粉色 - 保持原有 */
+        }
+
+        /* ========== 页面整体样式 ========== */
+        body {
+            padding: 20px;
+            background-image: url("{{ url_for('static', filename='images/background.jpg') }}");
+            background-repeat: repeat;
+            background-size: 300px 300px;
+            min-height: 100%;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* 保留半透明遮罩层 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.85);
+            z-index: 0;
+        }
+
+        /* ========== 云彩动画容器 ========== */
+        .clouds-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: var(--color-periwinkle);
+            transition: opacity 0.3s ease;
+        }
+
+        .clouds-container.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .cloud-left, .cloud-right {
+            width: 150px;
+            height: 150px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            transition: transform 0.8s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+        }
+
+        .cloud-left {
+            background-image: url("{{ url_for('static', filename='images/cloud_left.png') }}");
+            transform: translateX(0);
+        }
+
+        .cloud-right {
+            background-image: url("{{ url_for('static', filename='images/cloud_right.png') }}");
+            transform: translateX(0);
+        }
+
+        .clouds-container.separate .cloud-left {
+            transform: translateX(-120px) scale(0.7);
+        }
+
+        .clouds-container.separate .cloud-right {
+            transform: translateX(120px) scale(0.7);
+        }
+
+        /* ========== 主容器 ========== */
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            width: 100%;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ========== 页面头部 ========== */
+        .vote-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .vote-title {
+            color: var(--color-zaffre);
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .vote-subtitle {
+            color: var(--color-text);
+            font-size: 1rem;
+            opacity: 0.8;
+        }
+
+        /* ========== 选项容器 - 使用Flexbox确保并排 ========== */
+        .options-container {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: nowrap; /* 关键：禁止换行 */
+            justify-content: space-between;
+            align-items: stretch;
+            gap: 1rem;
+            margin: 1.5rem 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* 选项标签 - 控制基础尺寸 */
+        .option-label {
+            flex: 1;
+            min-width: 0; /* 关键：允许收缩到小于内容尺寸 */
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ========== 选项卡片 ========== */
+        .option-card {
+            background: var(--color-citron);
+            border-radius: 16px;
+            padding: 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 3px solid transparent;
+            position: relative;
+            overflow: hidden;
+            height: 240px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            box-sizing: border-box;
+            width: 100%;
+        }
+
+        .option-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+        }
+
+        .option-card.selected {
+            border-color: var(--color-zaffre);
+            background: var(--color-citron-light);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(13, 33, 165, 0.15);
+        }
+
+        /* ========== 自定义图标容器 ========== */
+        .option-icon {
+            width: 100px;
+            height: 100px;
+            margin-bottom: 0.8rem;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            transition: transform 0.3s ease;
+        }
+
+        .option-card:hover .option-icon {
+            transform: scale(1.05);
+        }
+
+        .boy-icon {
+            background-image: url("{{ url_for('static', filename='images/male_pony.png') }}");
+        }
+
+        .girl-icon {
+            background-image: url("{{ url_for('static', filename='images/female_pony.png') }}");
+        }
+
+        /* ========== 选中徽章 ========== */
+        .selected-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: var(--color-zaffre);
+            color: white;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        /* ========== 选项标题 - 保留原始颜色 ========== */
+        .option-title {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+            white-space: nowrap; /* 防止文字换行 */
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+
+        .boy-title {
+            color: var(--color-boy); /* 保持原有男孩蓝色 */
+        }
+
+        .girl-title {
+            color: var(--color-girl); /* 保持原有女孩粉色 */
+        }
+
+        input[type="radio"] {
+            display: none;
+        }
+
+        /* ========== 错误提示框 ========== */
+        .error-box {
+            background: rgba(231, 76, 60, 0.1);
+            color: var(--color-alizarin);
+            padding: 1rem;
+            border-radius: 10px;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            border-left: 4px solid var(--color-alizarin);
+        }
+
+        .voting-closed-box {
+            background: rgba(255, 183, 77, 0.15);
+            color: var(--color-text);
+            padding: 1rem;
+            border-radius: 10px;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            border-left: 4px solid var(--color-amber);
+        }
+
+        /* ========== 提交按钮容器 ========== */
+        .submit-container {
+            text-align: center;
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(0,0,0,0.1);
+        }
+
+        .submit-btn {
+            padding: 0.9rem 2.5rem;
+            font-size: 1.1rem;
+            background: var(--color-zaffre);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+            box-shadow: 0 4px 8px rgba(13, 33, 165, 0.3);
+            min-width: 160px;
+        }
+
+        .submit-btn:hover {
+            background: var(--color-zaffre-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(13, 33, 165, 0.4);
+        }
+
+        .submit-btn:disabled {
+            background: #aaa;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .vote-notice {
+            margin-top: 0.8rem;
+            color: var(--color-text);
+            font-size: 0.85em;
+            opacity: 0.7;
+        }
+
+        /* ========== 投票截止容器 ========== */
+        .closed-container {
+            text-align: center;
+            padding: 2.5rem 1.5rem;
+            background: var(--color-citron);
+            border-radius: 16px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+        }
+
+        .closed-title {
+            color: var(--color-zaffre);
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+        }
+
+        /* ========== 开始投票按钮 ========== */
+        .start-vote-btn {
+            padding: 0.8rem 1.8rem;
+            font-size: 1.1rem;
+            background: var(--color-sage);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 1.5rem;
+            transition: all 0.3s;
+        }
+
+        .start-vote-btn:hover {
+            background: #6fb371;
+            transform: scale(1.05);
+        }
+
+        /* ========== 响应式调整 ========== */
+        @media (max-width: 600px) {
+            .options-container {
+                gap: 0.8rem;
+            }
+            
+            .option-card {
+                height: 200px;
+                padding: 1rem;
+                border-radius: 12px;
+            }
+            
+            .option-icon {
+                width: 80px;
+                height: 80px;
+                margin-bottom: 0.6rem;
+            }
+            
+            .option-title {
+                font-size: 1.3rem;
+            }
+            
+            .vote-title {
+                font-size: 1.6rem;
+            }
+            
+            .vote-subtitle {
+                font-size: 0.9rem;
+            }
+            
+            .submit-btn {
+                padding: 0.8rem 2rem;
+                font-size: 1rem;
+                min-width: 140px;
+            }
+            
+            .selected-badge {
+                top: 8px;
+                right: 8px;
+                width: 22px;
+                height: 22px;
+                font-size: 0.7rem;
+            }
+            
+            .cloud-left, .cloud-right {
+                width: 120px;
+                height: 120px;
+            }
+        }
+
+        @media (max-width: 375px) {
+            .options-container {
+                gap: 0.6rem;
+            }
+            
+            .option-card {
+                height: 180px;
+                padding: 0.8rem;
+                border-radius: 10px;
+            }
+            
+            .option-icon {
+                width: 70px;
+                height: 70px;
+                margin-bottom: 0.5rem;
+            }
+            
+            .option-title {
+                font-size: 1.2rem;
+            }
+        }
+
+        @media (max-width: 320px) {
+            .options-container {
+                gap: 0.5rem;
+            }
+            
+            .option-card {
+                height: 160px;
+                padding: 0.6rem;
+            }
+            
+            .option-icon {
+                width: 60px;
+                height: 60px;
+                margin-bottom: 0.4rem;
+            }
+            
+            .option-title {
+                font-size: 1.1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 云彩开场动画容器 -->
+    <div class="clouds-container" id="cloudsContainer">
+        <div class="cloud-left" id="cloudLeft"></div>
+        <div class="cloud-right" id="cloudRight"></div>
+    </div>
+    
+    <div class="container" id="mainContainer">
+        <div class="vote-header">
+            <h1 class="vote-title">猜猜是男孩还是女孩？</h1>
+            <p class="vote-subtitle">点击下方选项进行选择，每人只能投一次！</p>
+        </div>
+        
+        {% if error %}
+        <div class="error-box">
+            {{ error }}
+        </div>
+        {% endif %}
+        
+        {% if voting_closed %}
+        <div class="closed-container">
+            <h2 class="closed-title">投票已截止</h2>
+            <p>感谢您的参与，请等待结果公布！</p>
+            <a href="{{ url_for('index') }}" style="display: inline-block; margin-top: 1.5rem;">
+                <button style="padding: 0.8rem 2rem;">返回首页</button>
+            </a>
+        </div>
+        
+        {% else %}
+        <form action="{{ url_for('vote') }}" method="POST" id="voteForm">
+            <!-- 使用Flexbox容器确保并排排列 -->
+            <div class="options-container">
+                <!-- 男孩选项 -->
+                <label for="boyOption" class="option-label">
+                    <input type="radio" id="boyOption" name="vote_option" value="男孩" required onclick="selectOption(this)">
+                    <div class="option-card" id="boyCard">
+                        <div class="option-icon boy-icon"></div>
+                        <h2 class="option-title boy-title">男孩</h2>
+                        <div class="selected-badge" style="display: none;">✓</div>
+                    </div>
+                </label>
+                
+                <!-- 女孩选项 -->
+                <label for="girlOption" class="option-label">
+                    <input type="radio" id="girlOption" name="vote_option" value="女孩" required onclick="selectOption(this)">
+                    <div class="option-card" id="girlCard">
+                        <div class="option-icon girl-icon"></div>
+                        <h2 class="option-title girl-title">女孩</h2>
+                        <div class="selected-badge" style="display: none;">✓</div>
+                    </div>
+                </label>
+            </div>
+            
+            <div class="submit-container">
+                <button type="submit" class="submit-btn" id="submitBtn">
+                    确认投票
+                </button>
+                <p class="vote-notice">
+                    提交后无法修改，请确认选择
+                </p>
+            </div>
+        </form>
+        {% endif %}
+    </div>
+
+    <script>
+        // 云彩动画和页面显示逻辑
+        document.addEventListener('DOMContentLoaded', function() {
+            const cloudsContainer = document.getElementById('cloudsContainer');
+            const cloudLeft = document.getElementById('cloudLeft');
+            const cloudRight = document.getElementById('cloudRight');
+            const mainContainer = document.getElementById('mainContainer');
+            
+            // 自动开始云彩动画（1秒后）
+            setTimeout(() => {
+                startCloudAnimation();
+            }, 1000);
+            
+            // 点击云彩也可以触发动画
+            cloudsContainer.addEventListener('click', startCloudAnimation);
+            
+            function startCloudAnimation() {
+                // 云彩分开
+                cloudsContainer.classList.add('separate');
+                
+                // 1秒后隐藏云彩容器
+                setTimeout(() => {
+                    cloudsContainer.classList.add('hidden');
+                }, 1000);
+            }
+        });
+        
+        // 选项选择效果
+        function selectOption(radio) {
+            document.getElementById('boyCard').classList.remove('selected');
+            document.getElementById('girlCard').classList.remove('selected');
+            
+            document.querySelectorAll('.selected-badge').forEach(badge => {
+                badge.style.display = 'none';
+            });
+            
+            if(radio.value === '男孩') {
+                document.getElementById('boyCard').classList.add('selected');
+                document.getElementById('boyCard').querySelector('.selected-badge').style.display = 'flex';
+            } else {
+                document.getElementById('girlCard').classList.add('selected');
+                document.getElementById('girlCard').querySelector('.selected-badge').style.display = 'flex';
+            }
+        }
+        
+        // 防止表单重复提交
+        document.getElementById('voteForm')?.addEventListener('submit', function(e) {
+            const submitBtn = document.getElementById('submitBtn');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '提交中...';
+            }
+        });
+        
+        // 交互效果
+        document.querySelectorAll('.option-card').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                if (!this.classList.contains('selected')) {
+                    this.style.transform = 'translateY(-3px)';
+                }
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                if (!this.classList.contains('selected')) {
+                    this.style.transform = 'translateY(0)';
+                }
+            });
+        });
+        
+        // 页面加载时滚动到错误位置
+        window.onload = function() {
+            if (document.querySelector('.error-box')) {
+                document.querySelector('.error-box').scrollIntoView({ behavior: 'smooth' });
+            }
+        };
+    </script>
+</body>
+</html>

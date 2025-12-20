@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>投票结果反馈</title>
+    <!-- 引入 Pico.css 框架 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        /* ========== CSS变量定义（新主题色系）========== */
+        :root {
+            /* 核心三色 */
+            --color-citron: #D1D067;      /* 莫兰迪黄 - 主容器背景 */
+            --color-periwinkle: #B9C7F8;  /* 淡蓝 - 页面背景 */
+            --color-zaffre: #0D21A5;      /* 深蓝 - 主强调色 */
+            
+            /* 扩展功能色 */
+            --color-text: #2C3A4D;        /* 深灰 - 主要文字 */
+            --color-background: #F8F9FA;  /* 浅灰白 - 浅色背景 */
+            --color-amber: #FFB74D;       /* 琥珀 - 辅助强调色 */
+            --color-sage: #81C784;        /* 鼠尾草绿 - 成功状态 */
+            --color-alizarin: #E74C3C;    /* 茜红 - 错误警示 */
+            
+            /* 衍生实用色 */
+            --color-zaffre-light: rgba(13, 33, 165, 0.1);
+            --color-zaffre-dark: #0A1A8C;
+            --color-citron-light: rgba(209, 208, 103, 0.9);
+        }
+
+        /* ========== 页面整体样式：使用与register相同的JPEG图片平铺背景 ========== */
+        body {
+            background-image: url("{{ url_for('static', filename='images/background.jpg') }}");
+            background-repeat: repeat; /* 平铺模式 */
+            background-size: 300px 300px; /* 控制平铺密度，与register保持一致 */
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            padding: 20px;
+            position: relative; /* 为半透明遮罩做准备 */
+        }
+        
+        /* 添加与register相同的半透明遮罩层，确保表单内容可读 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.88); /* 白色半透明遮罩 */
+            z-index: 0;
+        }
+        
+        /* ========== 主容器 ========== */
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: var(--color-citron);
+            border-radius: 25px;
+            padding: 3rem;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+            width: 100%;
+            position: relative; /* 确保内容在遮罩之上 */
+            z-index: 1;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        /* ========== 结果图标区域 ========== */
+        .result-icon {
+            font-size: 5rem;
+            margin-bottom: 1rem;
+            color: var(--color-zaffre); /* 为文字图标添加颜色 */
+        }
+        
+        /* ========== 恭喜标题样式 ========== */
+        .congrats-title {
+            color: var(--color-zaffre);
+            margin-bottom: 1rem;
+        }
+        
+        /* ========== 信息区域 ========== */
+        .message-area {
+            font-size: 1.2rem;
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 15px;
+            line-height: 1.6;
+            color: var(--color-text);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        /* ========== 结果详情区域 ========== */
+        .result-details {
+            background: rgba(255, 255, 255, 0.7);
+            padding: 1.5rem;
+            border-radius: 15px;
+            margin: 2rem 0;
+            text-align: left;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        /* ========== 详情项样式 ========== */
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.8rem;
+            padding-bottom: 0.8rem;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            color: var(--color-text);
+        }
+        
+        .detail-item:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+        
+        /* ========== 正确答案样式 ========== */
+        .correct-answer {
+            color: var(--color-sage);
+            font-weight: bold;
+        }
+        
+        /* ========== 用户选择样式 ========== */
+        .user-answer {
+            color: var(--color-zaffre);
+            font-weight: bold;
+        }
+        
+        /* ========== 礼物提示区域 ========== */
+        .gift-notice {
+            background: rgba(129, 199, 132, 0.2);
+            padding: 1.2rem;
+            border-radius: 10px;
+            margin-top: 1.5rem;
+            text-align: center;
+            font-weight: bold;
+            color: var(--color-text);
+            border: 1px solid rgba(129, 199, 132, 0.3);
+        }
+        
+        /* ========== 等待区域 ========== */
+        .waiting-area {
+            padding: 2rem;
+            background: rgba(255, 183, 77, 0.2);
+            border-radius: 15px;
+            margin: 2rem 0;
+            color: var(--color-text);
+            border: 1px solid rgba(255, 183, 77, 0.3);
+        }
+        
+        /* ========== 按钮容器 ========== */
+        .button-container {
+            margin-top: 2rem;
+        }
+        
+        /* ========== 返回按钮样式 ========== */
+        .home-btn {
+            padding: 0.8rem 2rem;
+            background: var(--color-zaffre);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-block;
+            text-decoration: none;
+            font-weight: 600;
+            box-shadow: 0 4px 8px rgba(13, 33, 165, 0.3);
+        }
+        
+        .home-btn:hover {
+            background: var(--color-zaffre-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(13, 33, 165, 0.4);
+        }
+        
+        /* ========== 正确状态图标颜色 ========== */
+        .result-icon.correct {
+            color: var(--color-sage);
+        }
+        
+        .result-icon.incorrect {
+            color: var(--color-alizarin);
+        }
+        
+        /* ========== 通用标题样式 ========== */
+        h1 {
+            color: var(--color-zaffre);
+        }
+        
+        /* ========== 响应式调整 ========== */
+        @media (max-width: 600px) {
+            .container {
+                padding: 2rem 1.5rem;
+            }
+            
+            .result-icon {
+                font-size: 4rem;
+            }
+            
+            .message-area {
+                font-size: 1.1rem;
+                padding: 0.8rem;
+            }
+            
+            .result-details {
+                padding: 1rem;
+            }
+        }
+        
+        @media (max-width: 400px) {
+            .container {
+                padding: 1.5rem 1rem;
+            }
+            
+            .result-icon {
+                font-size: 3.5rem;
+            }
+            
+            .home-btn {
+                padding: 0.7rem 1.5rem;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 1. 根据不同情况显示不同内容 -->
+        {% if is_correct %}
+        <!-- 猜对了的情况 -->
+        <div class="result-icon correct">✓</div>
+        <h1 class="congrats-title">恭喜你猜对啦！</h1>
+        
+        <div class="message-area">
+            {{ message }}
+        </div>
+        
+        <div class="result-details">
+            <div class="detail-item">
+                <span>正确答案：</span>
+                <span class="correct-answer">{{ correct_answer }}</span>
+            </div>
+            <div class="detail-item">
+                <span>你的选择：</span>
+                <span class="user-answer">{{ your_choice }}</span>
+            </div>
+        </div>
+        
+        <div class="gift-notice">
+            宝宝伴手礼马上送到！
+        </div>
+        
+        {% else %}
+        <!-- 未开奖或猜错了的情况 -->
+        <div class="result-icon {% if correct_answer %}incorrect{% endif %}">
+            {% if correct_answer %}✗{% else %}...{% endif %}
+        </div>
+        
+        <h1>{{ message }}</h1>
+        
+        {% if correct_answer and your_choice %}
+        <!-- 已开奖但猜错了 -->
+        <div class="result-details">
+            <div class="detail-item">
+                <span>正确答案：</span>
+                <span class="correct-answer">{{ correct_answer }}</span>
+            </div>
+            <div class="detail-item">
+                <span>你的选择：</span>
+                <span class="user-answer">{{ your_choice }}</span>
+            </div>
+        </div>
+        
+        {% elif not correct_answer %}
+        <!-- 尚未开奖 -->
+        <div class="waiting-area">
+            <p>结果尚未揭晓</p>
+            <p style="color: var(--color-text); margin-top: 1rem; opacity: 0.8;">请等待小王&小李的朋友圈</p>
+        </div>
+        {% endif %}
+        {% endif %}
+        
+        <!-- 2. 返回首页按钮 -->
+        <div class="button-container">
+            <a href="{{ url_for('index') }}" class="home-btn">
+                返回首页
+            </a>
+        </div>
+    </div>
+</body>
+</html>
